@@ -1,0 +1,104 @@
+warning: in the working copy of 'playwright.config.ts', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/fixtures/testFixture.ts b/fixtures/testFixture.ts[m
+[1mindex e69de29..b43b44a 100644[m
+[1m--- a/fixtures/testFixture.ts[m
+[1m+++ b/fixtures/testFixture.ts[m
+[36m@@ -0,0 +1,16 @@[m
+[32m+[m[32mimport { test as base, expect } from '@playwright/test';[m
+[32m+[m[32mimport { LoginPage } from '../pages/02 - LoginPage';[m
+[32m+[m[32mimport { env } from '../utils/env.helper';[m
+[32m+[m
+[32m+[m[32mtype MyFixtures = {[m
+[32m+[m[32m  loginPage: LoginPage;[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mexport const test = base.extend<MyFixtures>({[m
+[32m+[m[32m  loginPage: async ({ page }, use) => {[m
+[32m+[m[32m    const loginPage = new LoginPage(page);[m
+[32m+[m[32m    await use(loginPage);[m
+[32m+[m[32m  },[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mexport { expect };[m
+\ No newline at end of file[m
+[1mdiff --git a/pages/BasePage.ts b/pages/BasePage.ts[m
+[1mdeleted file mode 100644[m
+[1mindex e69de29..0000000[m
+[1mdiff --git a/pages/LoginPage.ts b/pages/LoginPage.ts[m
+[1mdeleted file mode 100644[m
+[1mindex e69de29..0000000[m
+[1mdiff --git a/playwright.config.ts b/playwright.config.ts[m
+[1mindex 6dfc0d9..99fb1e6 100644[m
+[1m--- a/playwright.config.ts[m
+[1m+++ b/playwright.config.ts[m
+[36m@@ -13,6 +13,11 @@[m [mimport { defineConfig, devices } from '@playwright/test';[m
+  */[m
+ export default defineConfig({[m
+   testDir: './tests',[m
+[32m+[m[32m  testMatch: [[m
+[32m+[m[32m    '**/*.spec.ts',[m
+[32m+[m[32m    '**/*.test.ts',[m
+[32m+[m[32m    '**/*.setup.ts'[m
+[32m+[m[32m  ],[m
+   /* Run tests in files in parallel */[m
+   fullyParallel: true,[m
+   /* Fail the build on CI if you accidentally left test.only in the source code. */[m
+[36m@@ -25,6 +30,7 @@[m [mexport default defineConfig({[m
+   reporter: 'html',[m
+   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */[m
+   use: {[m
+[32m+[m[32m    headless: false,[m
+     /* Base URL to use in actions like `await page.goto('')`. */[m
+     // baseURL: 'http://localhost:3000',[m
+ [m
+[36m@@ -39,15 +45,15 @@[m [mexport default defineConfig({[m
+       use: { ...devices['Desktop Chrome'] },[m
+     },[m
+ [m
+[31m-    {[m
+[31m-      name: 'firefox',[m
+[31m-      use: { ...devices['Desktop Firefox'] },[m
+[31m-    },[m
+[32m+[m[32m    // {[m
+[32m+[m[32m    //   name: 'firefox',[m
+[32m+[m[32m    //   use: { ...devices['Desktop Firefox'] },[m
+[32m+[m[32m    // },[m
+ [m
+[31m-    {[m
+[31m-      name: 'webkit',[m
+[31m-      use: { ...devices['Desktop Safari'] },[m
+[31m-    },[m
+[32m+[m[32m    // {[m
+[32m+[m[32m    //   name: 'webkit',[m
+[32m+[m[32m    //   use: { ...devices['Desktop Safari'] },[m
+[32m+[m[32m    // },[m
+ [m
+     /* Test against mobile viewports. */[m
+     // {[m
+[1mdiff --git a/tests/setup/auth.setup.ts b/tests/setup/auth.setup.ts[m
+[1mindex e69de29..a48a2c8 100644[m
+[1m--- a/tests/setup/auth.setup.ts[m
+[1m+++ b/tests/setup/auth.setup.ts[m
+[36m@@ -0,0 +1,21 @@[m
+[32m+[m[32mimport { test } from '@playwright/test';[m
+[32m+[m[32mimport { LoginPage } from '../../pages/02 - LoginPage';[m
+[32m+[m[32mimport { env } from '../../utils/env.helper';[m
+[32m+[m[32mimport path from 'path/win32';[m
+[32m+[m
+[32m+[m[32mtest('Authenticate User', async ({ page }) => {[m
+[32m+[m
+[32m+[m[32m    const loginPage = new LoginPage(page);[m
+[32m+[m
+[32m+[m[32m    await loginPage.open();[m
+[32m+[m
+[32m+[m[32m    await loginPage.login([m
+[32m+[m[32m        env.username!,[m
+[32m+[m[32m        env.password![m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    await page.context().storageState({[m
+[32m+[m[32m        path: path.resolve(process.cwd(), 'auth', 'storageState.json'),[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m});[m
+\ No newline at end of file[m
