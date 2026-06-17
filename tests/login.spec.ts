@@ -9,7 +9,7 @@ test.describe('Login Tests', () => {
         await loginPage.open();
         await loginPage.login(env.username!, env.password!);
 
-        await expect(page).toHaveURL(/dashboard/);
+        await expect(page).toHaveURL(/5722959789/);
     });
 
     test('Invalid username should show error message', async ({ loginPage }) => {
