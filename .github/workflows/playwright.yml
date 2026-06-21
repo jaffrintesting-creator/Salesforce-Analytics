@@ -20,20 +20,27 @@ jobs:
     - name: Run Playwright tests
       run: npx playwright test
       continue-on-error: true
-    - name: Set up Python for export script
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+    - name: Install reporting script dependencies
+      run: npm install
+      working-directory: ./reporting
+    - name: Build reporting scripts
+      run: npm run build
+      working-directory: ./reporting
     - name: Apply database schema
-      run: python -c "import sqlite3; conn = sqlite3.connect('qa.db'); conn.executescript(open('schema.sql').read()); conn.commit(); conn.close(); print('schema applied')"
+      run: node -e "const initSqlJs = require('sql.js'); const fs = require('fs'); initSqlJs().then(SQL => { const db = new SQL.Database(); db.run(fs.readFileSync('schema.sql', 'utf-8')); fs.writeFileSync('qa.db', Buffer.from(db.export())); console.log('schema applied'); });"
+      working-directory: ./reporting
     - name: Export test results to QA database
       run: |
-        python export-results.py \
-          --results test-results/results.json \
+        node export-results.js \
+          --results ../test-results/results.json \
           --db qa.db \
           --ci-pipeline "${{ github.workflow }}" \
           --branch "${{ github.ref_name }}" \
           --org-id "SBX-UAT-01"
+      working-directory: ./reporting
+    - name: Export QA database to CSV
+      run: node export-to-csv.js --db qa.db --out ./csv-export
+      working-directory: ./reporting
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
@@ -44,5 +51,11 @@ jobs:
       if: ${{ !cancelled() }}
       with:
         name: qa-database
-        path: qa.db
+        path: reporting/qa.db
+        retention-days: 30
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: qa-csv-export
+        path: reporting/csv-export/
         retention-days: 30
