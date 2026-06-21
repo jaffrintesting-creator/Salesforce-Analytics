@@ -97,18 +97,10 @@ CREATE INDEX IF NOT EXISTS idx_defect_testcase ON fact_defect(test_case_id);
 CREATE INDEX IF NOT EXISTS idx_defect_run ON fact_defect(run_id);
 
 -- ------------------------------------------------------------
--- Example seed rows (delete once real pipeline data flows in)
+-- Real org row only — no fake test cases, test runs, or defects.
+-- export-results.py passes --org-id SBX-UAT-01 by default, so this
+-- row needs to exist for the org_id foreign key to resolve. Update
+-- sf_release / edition / org_type below to match your actual sandbox.
 -- ------------------------------------------------------------
 INSERT OR IGNORE INTO dim_org (org_id, org_type, sf_release, edition) VALUES
     ('SBX-UAT-01', 'Sandbox', 'Spring ''26', 'Enterprise');
-
-INSERT OR IGNORE INTO dim_testcase (test_case_id, title, suite, module, object_type, test_layer, api_endpoint, http_method, priority, automation_status) VALUES
-    ('TC-SF-0001', 'Verify Opportunity creation via REST', 'Opportunity Management', 'Sales Console', 'Opportunity', 'REST-API', '/services/data/v60.0/sobjects/Opportunity', 'POST', 'High', 'Automated'),
-    ('TC-SF-0002', 'Verify Opportunity stage update triggers Account rollup', 'Opportunity Management', 'Lightning Sales Console', 'Opportunity', 'UI', NULL, NULL, 'High', 'Manual');
-
-INSERT OR IGNORE INTO fact_testrun (run_id, test_case_id, org_id, status, duration_ms, ci_pipeline, branch, locator_strategy, http_status_code) VALUES
-    ('RUN-0001', 'TC-SF-0001', 'SBX-UAT-01', 'Pass', 842, 'sf-api-tests.yml', 'main', NULL, '201'),
-    ('RUN-0002', 'TC-SF-0002', 'SBX-UAT-01', 'Fail', 5310, 'sf-ui-tests.yml', 'main', 'Shadow DOM', NULL);
-
-INSERT OR IGNORE INTO fact_defect (defect_id, test_case_id, run_id, severity, root_cause, status) VALUES
-    ('DEF-0001', 'TC-SF-0002', 'RUN-0002', 'Medium', 'Lightning DOM change', 'Open');
