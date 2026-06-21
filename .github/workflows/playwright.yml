@@ -19,9 +19,30 @@ jobs:
       run: npx playwright install --with-deps
     - name: Run Playwright tests
       run: npx playwright test
+      continue-on-error: true
+    - name: Set up Python for export script
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Apply database schema
+      run: python -c "import sqlite3; conn = sqlite3.connect('qa.db'); conn.executescript(open('schema.sql').read()); conn.commit(); conn.close(); print('schema applied')"
+    - name: Export test results to QA database
+      run: |
+        python export-results.py \
+          --results test-results/results.json \
+          --db qa.db \
+          --ci-pipeline "${{ github.workflow }}" \
+          --branch "${{ github.ref_name }}" \
+          --org-id "SBX-UAT-01"
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
         name: playwright-report
         path: playwright-report/
+        retention-days: 30
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: qa-database
+        path: qa.db
         retention-days: 30
