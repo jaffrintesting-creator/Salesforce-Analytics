@@ -11,3 +11,4 @@ node_modules/
 ENV/
 auth/storageState.json
 reports/results.json
+qa.db
