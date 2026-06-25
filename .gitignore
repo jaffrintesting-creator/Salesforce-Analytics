@@ -12,3 +12,7 @@ ENV/
 auth/storageState.json
 reports/results.json
 qa.db
+reporting/node_modules/
+reporting/csv-export/
+reporting/qa.db
+reporting/*.js

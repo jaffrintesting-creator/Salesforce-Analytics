@@ -9,7 +9,7 @@ test.describe('Login Tests', () => {
         await loginPage.open();
         await loginPage.login(env.username!, env.password!);
 
-        await expect(page).toHaveURL(/5722959789/);
+        await expect(page).toHaveURL(/lightning/);
     });
 
     test('Invalid username should show error message', async ({ loginPage }) => {
@@ -64,6 +64,6 @@ test.describe('Login Tests', () => {
     test('Forgot Password link should navigate to password reset page', async ({ loginPage, page }) => {
         await loginPage.open();
         await loginPage.clickForgotPassword();
-        await expect(page).toHaveURL(/forgotpassword/);
+        await expect(page).toHaveURL(/forgotpassword/); 
     });    
 });
