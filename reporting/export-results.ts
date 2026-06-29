@@ -53,6 +53,7 @@ interface PlaywrightSpec {
 
 interface PlaywrightSuite {
   title: string;
+  file?: string;
   specs?: PlaywrightSpec[];
   suites?: PlaywrightSuite[];
 }
@@ -67,6 +68,8 @@ interface FlatTestEntry {
   status: string;
   durationMs: number;
   wasRetried: boolean;
+  filePath: string;
+  topLevelSuiteTitle: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -96,15 +99,26 @@ function parseArgs(argv: string[]): CliArgs {
 
 /**
  * Walks Playwright's nested suite structure recursively and yields a flat
- * list of {fullTitle, specTitle, status, durationMs, wasRetried} entries.
- * Mirrors flatten_specs() from the Python version exactly.
+ * list of test entries. Mirrors flatten_specs() from the Python version,
+ * with one addition: tracks the top-level suite's `file` path and title
+ * as it recurses, so callers can tell which file/suite each test actually
+ * came from -- needed to correctly distinguish UI vs API tests instead
+ * of hardcoding one value for everything.
  */
 function* flattenSpecs(
   suites: PlaywrightSuite[],
-  parentTitles: string[] = []
+  parentTitles: string[] = [],
+  topLevelFile: string = "",
+  topLevelSuiteTitle: string = ""
 ): Generator<FlatTestEntry> {
   for (const suite of suites) {
     const titles = [...parentTitles, suite.title ?? ""];
+    // The file path only appears on the OUTERMOST suite in Playwright's
+    // JSON (e.g. the suite representing the whole .spec.ts file). Nested
+    // suites (describe blocks) don't repeat it, so once we're past the
+    // top level we keep carrying forward whatever was captured there.
+    const currentFile = parentTitles.length === 0 ? (suite.file ?? "") : topLevelFile;
+    const currentTopLevelTitle = parentTitles.length === 0 ? (suite.title ?? "") : topLevelSuiteTitle;
 
     for (const spec of suite.specs ?? []) {
       const specTitle = spec.title ?? "untitled";
@@ -120,14 +134,31 @@ function* flattenSpecs(
           status: finalResult.status ?? "unknown",
           durationMs: finalResult.duration ?? 0,
           wasRetried,
+          filePath: currentFile,
+          topLevelSuiteTitle: currentTopLevelTitle,
         };
       }
     }
 
     if (suite.suites) {
-      yield* flattenSpecs(suite.suites, titles);
+      yield* flattenSpecs(suite.suites, titles, currentFile, currentTopLevelTitle);
     }
   }
+}
+
+/**
+ * Determines test_layer (UI vs REST-API) from the test file's path.
+ * Anything under a folder literally named "api" (e.g. tests/api/lead.api.spec.ts,
+ * or Windows-style tests\api\lead.api.spec.ts) is REST-API; everything
+ * else defaults to UI. This is a simple, explicit convention -- if you
+ * organize test files differently, update this function to match.
+ */
+function deriveTestLayer(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, "/").toLowerCase();
+  if (normalized.includes("/api/") || normalized.startsWith("api/")) {
+    return "REST-API";
+  }
+  return "UI";
 }
 
 /**
@@ -181,6 +212,7 @@ function ensureTestcaseExists(
   db: Database,
   testCaseId: string,
   title: string,
+  suiteName: string,
   testLayer: string
 ): void {
   const checkStmt = db.prepare("SELECT 1 FROM dim_testcase WHERE test_case_id = :id");
@@ -197,7 +229,7 @@ function ensureTestcaseExists(
     insertStmt.run({
       ":id": testCaseId,
       ":title": title,
-      ":suite": "Login Tests",
+      ":suite": suiteName,
       ":layer": testLayer,
     });
     insertStmt.free();
@@ -253,7 +285,13 @@ async function main(): Promise<void> {
     const status = mapStatus(entry.status, entry.wasRetried);
     statusCounts[status] = (statusCounts[status] ?? 0) + 1;
 
-    ensureTestcaseExists(db, testCaseId, entry.specTitle, "UI");
+    ensureTestcaseExists(
+      db,
+      testCaseId,
+      entry.specTitle,
+      entry.topLevelSuiteTitle,
+      deriveTestLayer(entry.filePath)
+    );
 
     const runId = generateRunId();
     insertRunStmt.run({
